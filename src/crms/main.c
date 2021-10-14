@@ -7,19 +7,23 @@
 extern char* VIRTUAL_MEMORY_PATH;
 extern FILE *fptr;
 extern PCBTable* PCB_TABLE;
+ErrorCode CR_ERROR;
 
 int main(int argc, char **argv) 
 {
     cr_mount(argv[1]);
-    cr_ls_processes();
+    // cr_ls_processes();
     // int name = cr_exists(27, "grub.mp4");
     // printf("RETORNO: %i\n", name);
     // cr_ls_files(27);
-    cr_start_process(34, "vicho pizarro");
-    cr_ls_processes();
-    cr_finish_process(34);
-    cr_ls_processes();
-
+    // cr_start_process(34, "vicho pizarro");
+    // cr_ls_processes();
+    // cr_finish_process(34);
+    // cr_ls_processes();
+    // CrmsFile* crmsFile = cr_open(27, "juanito.mp3", 'w');
+    // printf("File Name: %s\n", crmsFile->fileName);
+    // int name = cr_exists(27, "juanito.mp3");
+    // printf("RETORNO: %i\n", name);
 
 }
 

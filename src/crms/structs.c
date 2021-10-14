@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <string.h> // strtok, strcpy, etc.
 
-
 extern FILE *fptr;
 
 PCBSubEntry* PCBSubEntryInit(unsigned char discPCBTable[], int i, int j) {
@@ -77,8 +76,12 @@ PCBTable* PCBTableInit() {
     PCBTable* pcbTable = malloc(sizeof(PCBTable));
     
     unsigned char discPCBTable[4096];
+    
     fseek(fptr, 0, SEEK_SET);
     fread(discPCBTable, 1, 4096, fptr);
+
+
+
     for (int i = 0; i < 16; i++)
     {
         pcbTable->entriesArray[i] = PCBEntryInit(discPCBTable, i);

@@ -52,6 +52,19 @@ typedef struct crmsfile
 } CrmsFile;
 
 
+typedef enum errorcode
+{
+    //Write all the errors below
+    INVALID_MEM_PATH,
+    INVALID_MODE,
+    PROCCESS_NOT_FOUND_STARTING,
+    INVALID_PROCESS_OPENING_FILE,
+    INVALID_FILE_OPENING_FILE,
+    INVALID_FINISH_PROCESS,
+
+} ErrorCode;
+
+
 
 
 PCBSubEntry* PCBSubEntryInit(unsigned char discPCBTable[], int i, int j);
@@ -60,3 +73,5 @@ PCBTable* PCBTableInit();
 PageTableEntry* PageTableEntryInit(unsigned char discPCBTable[], int i, int j);
 PageTable* PageTableInit(unsigned char discPCBTable[], int i);
 CrmsFile* CrmsFileInit(unsigned int proccessId, unsigned char fileName[], unsigned int fileSize);
+
+ErrorCode CR_ERROR;
