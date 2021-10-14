@@ -233,16 +233,85 @@ CrmsFile* cr_open(int process_id, char* file_name, char mode)
     
 }
 
-
 void cr_close(CrmsFile* file_desc)
 {
     free(file_desc);
 }
 
-
 void cr_delete_file(CrmsFile* file_desc)
 {
+    int* fileFrames[16];
+    int filesCounter = 0;
+    int** otherFilesFrames[144];
+    int otherFilesCounter = 0;
+    PageTable* pageTable;
+
+    for (int i = 0; i < 16; i++)
+    {
+        if (file_desc->proccessId == PCB_TABLE->entriesArray[i]->processId)
+        {
+            pageTable = PCB_TABLE->entriesArray[i]->pageTable;
+
+            for (int j = 0; j < 10; j++)
+            {   
+                PCBSubEntry* subEntry = PCB_TABLE->entriesArray[i]->subEntriesArray[j];
+                unsigned int VFN = pageTable->entriesArray[subEntry->VPN];
+
+                if (file_desc->fileName == PCB_TABLE->entriesArray[i]->subEntriesArray[j]->fileName)
+                {
+                    PCB_TABLE->entriesArray[i]->subEntriesArray[j]->valid = 0;
+
+                    int currentOffset = subEntry->offSet;
+                    int frameFreeSpace = 8388608 - currentOffset;
+                    int currentSize = subEntry->fileSize;
+
+                    while (currentSize)
+                    {
+                        if (currentSize <= frameFreeSpace) {
+                            fileFrames[filesCounter] = VFN;  
+                            currentSize = 0;  
+                        } else {
+                            currentSize = currentSize - frameFreeSpace;
+                            frameFreeSpace = 8388608;
+                            fileFrames[filesCounter] = VFN;  
+                        }
+                        filesCounter++;
+                    }
+
+                } else {
+
+                    int currentOffset = subEntry->offSet;
+                    int frameFreeSpace = 8388608 - currentOffset;
+                    int currentSize = subEntry->fileSize;
+
+                    while (currentSize)
+                    {
+                        if (currentSize <= frameFreeSpace) {
+                            otherFilesFrames[otherFilesCounter] = VFN;  
+                            currentSize = 0;  
+                        } else {
+                            currentSize = currentSize - frameFreeSpace;
+                            frameFreeSpace = 8388608;
+                            otherFilesFrames[otherFilesCounter] = VFN;  
+                        }
+                        otherFilesCounter++;
+                    }
+                }
+            }
+            if (filesCounter < 16) {
+                fileFrames[filesCounter + 1] = NULL;
+            }
+            if (otherFilesCounter < 144) {
+                otherFilesFrames[otherFilesCounter + 1] = NULL;
+            }
+            break;
+        }
+        
+    }
+    // HACER COMPARACION 
     
+
+
 }
 
 int cr_read(CrmsFile* file_desc, void* buffer, int n_bytes)
@@ -264,6 +333,8 @@ int cr_read(CrmsFile* file_desc, void* buffer, int n_bytes)
     }
 
     PFN = pageTable->entriesArray[file_desc->VPN + file_desc->completedPages]->PFN;
+
+    printf("VPN: %i", file_desc->VPN);
 
     while (file_desc->lastReadSize < file_desc->fileSize)
     {
