@@ -48,6 +48,12 @@ typedef struct crmsfile
     unsigned int proccessId;
     unsigned char fileName[12];
     unsigned int fileSize;
+    unsigned int VPN;
+    unsigned int offSet;
+    unsigned int lastReadOffset;
+    unsigned int completedPages;
+    unsigned int lastReadSize;
+    
 
 } CrmsFile;
 

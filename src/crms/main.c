@@ -24,6 +24,17 @@ int main(int argc, char **argv)
     // printf("File Name: %s\n", crmsFile->fileName);
     // int name = cr_exists(27, "juanito.mp3");
     // printf("RETORNO: %i\n", name);
-
+    CrmsFile* crmsFile = cr_open(0, "secret.txt", 'r');
+    FILE *fp = fopen("secret.txt", "wb");
+    printf("SIZE: %i\n", crmsFile->fileSize);
+    unsigned char buffer[100];
+    int byteLeidos = cr_read(crmsFile, buffer, 100);
+    printf("Bytes Leidos: %i\n", byteLeidos);
+    while (byteLeidos != 0)
+    {
+        fwrite(buffer, byteLeidos, 1, fp);
+        byteLeidos = cr_read(crmsFile, buffer, 100);
+    }
+    fclose(fp);
 }
 

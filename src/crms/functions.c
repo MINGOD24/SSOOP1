@@ -161,6 +161,11 @@ CrmsFile* cr_open(int process_id, char* file_name, char mode)
                         CrmsFile* crmsFile = CrmsFileInit(PCB_TABLE->entriesArray[i]->processId, 
                                                             PCB_TABLE->entriesArray[i]->subEntriesArray[j]->fileName, 
                                                             PCB_TABLE->entriesArray[i]->subEntriesArray[j]->fileSize);
+                        crmsFile->VPN = PCB_TABLE->entriesArray[i]->subEntriesArray[j]->VPN;
+                        crmsFile->offSet = PCB_TABLE->entriesArray[i]->subEntriesArray[j]->offSet;
+                        crmsFile->lastReadOffset = crmsFile->offSet;
+                        crmsFile->lastReadSize = 0;
+                        crmsFile->completedPages = 0;
                         return crmsFile;
                     }
                     
@@ -177,6 +182,11 @@ CrmsFile* cr_open(int process_id, char* file_name, char mode)
                         CrmsFile* crmsFile = CrmsFileInit(PCB_TABLE->entriesArray[i]->processId, 
                                                             PCB_TABLE->entriesArray[i]->subEntriesArray[j]->fileName, 
                                                             PCB_TABLE->entriesArray[i]->subEntriesArray[j]->fileSize);
+                        crmsFile->VPN = PCB_TABLE->entriesArray[i]->subEntriesArray[j]->VPN;
+                        crmsFile->offSet = PCB_TABLE->entriesArray[i]->subEntriesArray[j]->offSet;
+                        crmsFile->lastReadOffset = crmsFile->offSet;
+                        crmsFile->lastReadSize = 0;
+                        crmsFile->completedPages = 0;
                         return crmsFile;
                     }
                     
@@ -192,6 +202,11 @@ CrmsFile* cr_open(int process_id, char* file_name, char mode)
                         CrmsFile* crmsFile = CrmsFileInit(PCB_TABLE->entriesArray[i]->processId, 
                                                             PCB_TABLE->entriesArray[i]->subEntriesArray[j]->fileName, 
                                                             PCB_TABLE->entriesArray[i]->subEntriesArray[j]->fileSize);
+                        crmsFile->VPN = PCB_TABLE->entriesArray[i]->subEntriesArray[j]->VPN;
+                        crmsFile->offSet = PCB_TABLE->entriesArray[i]->subEntriesArray[j]->offSet;
+                        crmsFile->lastReadOffset = crmsFile->offSet;
+                        crmsFile->lastReadSize = 0;
+                        crmsFile->completedPages = 0;
                         return crmsFile;
                     }
                     
@@ -229,6 +244,57 @@ void cr_delete_file(CrmsFile* file_desc)
 {
     
 }
+
+int cr_read(CrmsFile* file_desc, void* buffer, int n_bytes)
+{
+    PageTable* pageTable;
+    unsigned int PFN; 
+    int remaining = n_bytes;
+    int read = 0;
+    unsigned char content[n_bytes];
+
+    for (int i = 0; i < 16; i++)
+    {
+        if (file_desc->proccessId == PCB_TABLE->entriesArray[i]->processId)
+        {
+            pageTable = PCB_TABLE->entriesArray[i]->pageTable;
+            break;
+        }
+        
+    }
+
+    PFN = pageTable->entriesArray[file_desc->VPN + file_desc->completedPages]->PFN;
+
+    while (file_desc->lastReadSize < file_desc->fileSize)
+    {
+        if (file_desc->lastReadOffset == 8388608)
+        {
+            file_desc->completedPages ++;
+            file_desc->lastReadOffset = 0;
+            PFN = pageTable->entriesArray[file_desc->VPN + file_desc->completedPages]->PFN;
+
+        }
+
+        
+        fseek(fptr, 4112 + 8388608 * PFN + file_desc->lastReadOffset, SEEK_SET);
+        unsigned char bytes[1];
+        fread(bytes, 1, 1, fptr);
+        content[read] = bytes[0];
+        read ++;
+        file_desc->lastReadOffset ++;
+        file_desc->lastReadSize ++;
+        remaining --;
+        if (remaining == 0)
+        {
+            break;
+        }
+                
+    }
+    
+    memcpy(buffer, content, read);
+    return read;
+}
+
 
 
 void cr_strerror(int code)
