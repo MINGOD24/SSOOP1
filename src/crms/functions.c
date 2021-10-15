@@ -64,17 +64,20 @@ int cr_exists(int process_id, char* file_name)
         
         
     }
+    CR_ERROR = INVALID_PROCESSID_EXIST;
     return 0;
 }
 
 
 void cr_ls_files(int process_id)
 {
+    int found = 0;
     for (int i = 0; i < 16; i++)
     {
         
         if (PCB_TABLE->entriesArray[i]->processId == process_id)
         {
+            found ++;
             for (int j = 0; j < 10; j++)
             {
                 if (PCB_TABLE->entriesArray[i]->subEntriesArray[j]->valid)
@@ -87,6 +90,11 @@ void cr_ls_files(int process_id)
         
         
     }
+    if (found == 0)
+    {
+        CR_ERROR = INVALID_PROCESSID_LS;
+    }
+    
 }
 
 void cr_start_process(int process_id, char* process_name)
@@ -94,6 +102,12 @@ void cr_start_process(int process_id, char* process_name)
     int found = 0;
     for (int i = 0; i < 16; i++)
     {
+        if (PCB_TABLE->entriesArray[i]->processId == process_id && PCB_TABLE->entriesArray[i]->state == 1)
+        {
+            CR_ERROR = PROCESSID_ALREADY_EXIST;
+            break;
+        }
+        
         if (!PCB_TABLE->entriesArray[i]->state)
         {
             found ++;
@@ -117,9 +131,9 @@ void cr_start_process(int process_id, char* process_name)
         }
         
     }
-    if (!found)
+    if (!found && CR_ERROR != PROCESSID_ALREADY_EXIST)
     {
-        CR_ERROR = PCB_FULL;
+        CR_ERROR = PCB_FULL_START;
     }
     
     
@@ -163,7 +177,7 @@ void cr_finish_process(int process_id)
     }
     if (foundProcess == 0)
     {
-        CR_ERROR = INVALID_FINISH_PROCESS;
+        CR_ERROR = INVALID_PROCESSID_FINISH;
     }
     
 }
@@ -172,6 +186,7 @@ CrmsFile* cr_open(int process_id, char* file_name, char mode)
 {
     int foundProcess = 0;
     int foundFile = 0;
+    int foundPCBEntryW = 0;
     for (int i = 0; i < 16; i++)
     {
         if (PCB_TABLE->entriesArray[i]->processId == process_id)
@@ -208,7 +223,6 @@ CrmsFile* cr_open(int process_id, char* file_name, char mode)
                 {
                     if (!strcmp((const char *)PCB_TABLE->entriesArray[i]->subEntriesArray[j]->fileName, file_name))
                     {
-                        foundFile ++;
                         CrmsFile* crmsFile = CrmsFileInit(PCB_TABLE->entriesArray[i]->processId, 
                                                             PCB_TABLE->entriesArray[i]->subEntriesArray[j]->fileName, 
                                                             PCB_TABLE->entriesArray[i]->subEntriesArray[j]->fileSize);
@@ -225,7 +239,7 @@ CrmsFile* cr_open(int process_id, char* file_name, char mode)
                 {
                     if (!PCB_TABLE->entriesArray[i]->subEntriesArray[j]->valid)
                     {
-                        foundFile ++;
+                        foundPCBEntryW ++;
                         PCB_TABLE->entriesArray[i]->subEntriesArray[j]->fileSize = 0;
                         PCB_TABLE->entriesArray[i]->subEntriesArray[j]->valid = 1;
                         memcpy(PCB_TABLE->entriesArray[i]->subEntriesArray[j]->fileName, file_name, 12);
@@ -269,16 +283,18 @@ CrmsFile* cr_open(int process_id, char* file_name, char mode)
         }
         
     }
-    if (foundProcess == 0)
+    if (foundProcess == 0 && !CR_ERROR)
     {
-        CR_ERROR = INVALID_PROCESS_OPENING_FILE;
+        CR_ERROR = INVALID_PROCESSID_OPEN;
     }
-    else if (foundFile == 0)
+    else if (foundFile == 0 && !CR_ERROR)
     {
-        CR_ERROR = INVALID_FILE_OPENING_FILE;
+        CR_ERROR = INVALID_FILE_OPEN;
+    }else if (foundPCBEntryW == 0 && !CR_ERROR)
+    {
+        CR_ERROR = PCB_FULLW_OPEN;
     }
-    
-    
+    return NULL;
 }
 
 void cr_close(CrmsFile* file_desc)
@@ -494,6 +510,12 @@ int cr_read(CrmsFile* file_desc, void* buffer, int n_bytes)
     int read = 0;
     unsigned char content[n_bytes];
 
+    if (file_desc->fileSize < n_bytes)
+    {
+        CR_ERROR = INVALID_READ;
+    }
+    
+
     for (int i = 0; i < 16; i++)
     {
         if (file_desc->proccessId == PCB_TABLE->entriesArray[i]->processId && PCB_TABLE->entriesArray[i]->state == 1)
@@ -545,32 +567,6 @@ int cr_read(CrmsFile* file_desc, void* buffer, int n_bytes)
 }
 
 
-int cr_write_file(CrmsFile* file_desc, void* buffer, int n_bytes)
-{
-    PageTable* pageTable;
-    for (int i = 0; i < 16; i++)
-    {
-        if (file_desc->proccessId == PCB_TABLE->entriesArray[i]->processId && PCB_TABLE->entriesArray[i]->state == 1)
-        {
-            pageTable = PCB_TABLE->entriesArray[i]->pageTable;
-            break;
-        }
-        
-    }
-
-    for (int i = 0; i < 32; i++)
-    {
-        if (!pageTable->entriesArray[i]->valid)
-        {
-            /* code */
-        }
-        
-    }
-    
-}
-
-
-
 
 void cr_strerror(int code)
 {
@@ -578,16 +574,27 @@ void cr_strerror(int code)
 
         case INVALID_MEM_PATH:
             printf("ERROR: The path of the virtual memory is invalid.\n");
+        case INVALID_PROCESSID_EXIST:
+            printf("ERROR: The provided process id to search the file doesnt exist.\n");
+        case INVALID_PROCESSID_LS:
+            printf("ERROR: The provided process id to show his files doesnt exist.\n");
+        case PROCESSID_ALREADY_EXIST:
+            printf("ERROR: There is already a process with the provided process id in execution.\n");
+        case PCB_FULL_START:
+            printf("ERROR: There is no space available in the PCB to start your process.\n");
+        case INVALID_PROCESSID_FINISH:
+            printf("ERROR: There is no process running with the provided id.\n");        
+        case INVALID_PROCESSID_OPEN:
+            printf("ERROR: The process selected to open the file was not found.\n");
         case INVALID_MODE:
             printf("EEROR: The mode selected for opening the file is invalid.\n");
-        case PCB_FULL:
-            printf("ERROR: The procces selected to start was not found.\n");
-        case INVALID_PROCESS_OPENING_FILE:
-            printf("ERROR: The process selected to open the file was not found.\n");
-        case INVALID_FILE_OPENING_FILE:
+        case INVALID_FILE_OPEN:
             printf("ERROR: The file selected to open was not found.\n");
-        case INVALID_FINISH_PROCESS:
-            printf("ERROR: The process selected to finis was not found.\n");
+        case PCB_FULLW_OPEN:
+            printf("ERROR: There is no space available in the PCB to open your process.\n");
+        case INVALID_READ:
+            printf("ERROR: The file you are trying to read is smaller than your buffer.\n");
+
 
     }
 }
