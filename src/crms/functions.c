@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include "structs.h"
 #include<string.h>  
+#include <math.h>
 
 
 char* VIRTUAL_MEMORY_PATH;
@@ -140,7 +141,6 @@ void cr_finish_process(int process_id)
                 PCB_TABLE->entriesArray[i]->subEntriesArray[j]->valid = 0;
 
                 unsigned char byteValid = (unsigned char)0;
-
                 fseek(fptr, 256 * i + 21 * j + 14, SEEK_SET);
                 fwrite(&byteValid, 1, 1, fptr);
             }
@@ -149,7 +149,6 @@ void cr_finish_process(int process_id)
             PCB_TABLE->entriesArray[i]->processId = 0;
             
             unsigned char byteState = (unsigned char)0;
-
             fseek(fptr, 256 * i, SEEK_SET);
             fwrite(&byteState, 1, 1, fptr);
 
@@ -270,81 +269,273 @@ void cr_close(CrmsFile* file_desc)
     free(file_desc);
 }
 
+// void cr_delete_file(CrmsFile* file_desc)
+// {
+//     int* fileFrames[16];
+//     int filesCounter = 0;
+//     int** otherFilesFrames[144];
+//     int otherFilesCounter = 0;
+//     PageTable* pageTable;
+
+//     for (int i = 0; i < 16; i++)
+//     {
+//         if (file_desc->proccessId == PCB_TABLE->entriesArray[i]->processId)
+//         {
+//             pageTable = PCB_TABLE->entriesArray[i]->pageTable;
+
+//             for (int j = 0; j < 10; j++)
+//             {   
+//                 PCBSubEntry* subEntry = PCB_TABLE->entriesArray[i]->subEntriesArray[j];
+//                 unsigned int VFN = pageTable->entriesArray[subEntry->VPN];
+
+//                 if (file_desc->fileName == PCB_TABLE->entriesArray[i]->subEntriesArray[j]->fileName)
+//                 {
+//                     PCB_TABLE->entriesArray[i]->subEntriesArray[j]->valid = 0;
+
+//                     int currentOffset = subEntry->offSet;
+//                     int frameFreeSpace = 8388608 - currentOffset;
+//                     int currentSize = subEntry->fileSize;
+
+//                     while (currentSize)
+//                     {
+//                         if (currentSize <= frameFreeSpace) {
+//                             fileFrames[filesCounter] = VFN;  
+//                             currentSize = 0;  
+//                         } else {
+//                             currentSize = currentSize - frameFreeSpace;
+//                             frameFreeSpace = 8388608;
+//                             fileFrames[filesCounter] = VFN;  
+//                         }
+//                         filesCounter++;
+//                     }
+
+//                 } else {
+
+//                     int currentOffset = subEntry->offSet;
+//                     int frameFreeSpace = 8388608 - currentOffset;
+//                     int currentSize = subEntry->fileSize;
+
+//                     while (currentSize)
+//                     {
+//                         if (currentSize <= frameFreeSpace) {
+//                             otherFilesFrames[otherFilesCounter] = VFN;  
+//                             currentSize = 0;  
+//                         } else {
+//                             currentSize = currentSize - frameFreeSpace;
+//                             frameFreeSpace = 8388608;
+//                             otherFilesFrames[otherFilesCounter] = VFN;  
+//                         }
+//                         otherFilesCounter++;
+//                     }
+//                 }
+//             }
+//             if (filesCounter < 16) {
+//                 fileFrames[filesCounter + 1] = NULL;
+//             }
+//             if (otherFilesCounter < 144) {
+//                 otherFilesFrames[otherFilesCounter + 1] = NULL;
+//             }
+//             break;
+//         }
+        
+//     }
+//     // HACER COMPARACION 
+// }
+
 void cr_delete_file(CrmsFile* file_desc)
 {
-    int* fileFrames[16];
-    int filesCounter = 0;
-    int** otherFilesFrames[144];
-    int otherFilesCounter = 0;
     PageTable* pageTable;
+    int processIndex;
 
     for (int i = 0; i < 16; i++)
     {
         if (file_desc->proccessId == PCB_TABLE->entriesArray[i]->processId)
         {
             pageTable = PCB_TABLE->entriesArray[i]->pageTable;
-
-            for (int j = 0; j < 10; j++)
-            {   
-                PCBSubEntry* subEntry = PCB_TABLE->entriesArray[i]->subEntriesArray[j];
-                unsigned int VFN = pageTable->entriesArray[subEntry->VPN];
-
-                if (file_desc->fileName == PCB_TABLE->entriesArray[i]->subEntriesArray[j]->fileName)
-                {
-                    PCB_TABLE->entriesArray[i]->subEntriesArray[j]->valid = 0;
-
-                    int currentOffset = subEntry->offSet;
-                    int frameFreeSpace = 8388608 - currentOffset;
-                    int currentSize = subEntry->fileSize;
-
-                    while (currentSize)
-                    {
-                        if (currentSize <= frameFreeSpace) {
-                            fileFrames[filesCounter] = VFN;  
-                            currentSize = 0;  
-                        } else {
-                            currentSize = currentSize - frameFreeSpace;
-                            frameFreeSpace = 8388608;
-                            fileFrames[filesCounter] = VFN;  
-                        }
-                        filesCounter++;
-                    }
-
-                } else {
-
-                    int currentOffset = subEntry->offSet;
-                    int frameFreeSpace = 8388608 - currentOffset;
-                    int currentSize = subEntry->fileSize;
-
-                    while (currentSize)
-                    {
-                        if (currentSize <= frameFreeSpace) {
-                            otherFilesFrames[otherFilesCounter] = VFN;  
-                            currentSize = 0;  
-                        } else {
-                            currentSize = currentSize - frameFreeSpace;
-                            frameFreeSpace = 8388608;
-                            otherFilesFrames[otherFilesCounter] = VFN;  
-                        }
-                        otherFilesCounter++;
-                    }
-                }
-            }
-            if (filesCounter < 16) {
-                fileFrames[filesCounter + 1] = NULL;
-            }
-            if (otherFilesCounter < 144) {
-                otherFilesFrames[otherFilesCounter + 1] = NULL;
-            }
+            processIndex = i;
             break;
         }
-        
     }
-    // HACER COMPARACION 
-    
 
+    for (int j = 0; j < 10; j++)
+    {
+        if (file_desc->fileName == PCB_TABLE->entriesArray[processIndex]->subEntriesArray[j]->fileName)
+        {
+            PCB_TABLE->entriesArray[processIndex]->subEntriesArray[j]->valid = 0;
+            // Make memory bit invalid
+            unsigned char byteValid = (unsigned char)0;
+            fseek(fptr, 256 * processIndex + 21 * j + 14, SEEK_SET);
+            fwrite(&byteValid, 1, 1, fptr);
+            break;
+        }
+    }
+        
+    // check which frame each file uses
+    unsigned int fileFrames[32];
+    int fileCounter = 0;
+    unsigned int otherFileFrames[288];
+    int otherFileCounter = 0;
 
+    for (int i = 0; i < 10; i++)
+    {
+        if (!strcmp((const char *)file_desc->fileName, (const char *)PCB_TABLE->entriesArray[processIndex]->subEntriesArray[i]->fileName))
+        {
+            int currentSize = file_desc->fileSize;
+            int currentFreeSpace = 8388608 - file_desc->offSet;
+            unsigned int VPN = file_desc->VPN;
+
+            while (currentSize) 
+            {
+                if (currentSize <= currentFreeSpace) 
+                {
+                    fileFrames[fileCounter] = pageTable->entriesArray[VPN]->PFN;
+                    currentSize = 0;
+                } else 
+                {
+                    fileFrames[fileCounter] = pageTable->entriesArray[VPN]->PFN;
+                    VPN++;
+                    currentSize = currentSize - currentFreeSpace;
+                    currentFreeSpace = 8388608;
+                }
+                fileCounter++;
+            }
+        } else {
+            int currentSize = PCB_TABLE->entriesArray[processIndex]->subEntriesArray[i]->fileSize;
+            int currentFreeSpace = 8388608 - PCB_TABLE->entriesArray[processIndex]->subEntriesArray[i]->offSet;
+            unsigned int VPN = PCB_TABLE->entriesArray[processIndex]->subEntriesArray[i]->VPN;
+
+            while (currentSize) 
+            {
+                if (currentSize <= currentFreeSpace) 
+                {
+                    otherFileFrames[otherFileCounter] = pageTable->entriesArray[VPN]->PFN;
+                    currentSize = 0;
+                } else 
+                {
+                    otherFileFrames[otherFileCounter] = pageTable->entriesArray[VPN]->PFN;
+                    VPN++;
+                    currentSize = currentSize - currentFreeSpace;
+                    currentFreeSpace = 8388608;
+                }
+                otherFileCounter++;
+            }
+        }
+
+        if (fileCounter > 2)
+        {
+            // free all middle frames
+            for (int i = 1; i < fileCounter - 1; i++)
+            {   
+                int frame = fileFrames[i];
+                int byteToChange = frame / 8;
+                fseek(fptr, 4096 + byteToChange, SEEK_SET);
+                unsigned char byte[1];
+                fread(byte, 1, 1, fptr);
+                int bitPosition = 7 - (frame - byteToChange*3);
+                byte[0] = byte[0] & (~(0x01 << bitPosition));
+                fwrite(byte, 1, 1, fptr);
+            }
+
+            int freeFirst = 1;
+            int freeLast = 1;
+            for (int i = 0; i < otherFileCounter; i++)
+            {
+                if (fileFrames[0] == otherFileFrames[i])
+                {
+                    freeFirst = 0;
+                }
+                if (fileFrames[fileCounter - 1] == otherFileFrames[i])
+                {
+                    freeLast = 0;
+                }
+                if (!freeFirst && !freeLast) break;
+            }
+
+            if (freeFirst) {
+                int frame = fileFrames[0];
+                int byteToChange = frame / 8;
+                fseek(fptr, 4096 + byteToChange, SEEK_SET);
+                unsigned char byte[1];
+                fread(byte, 1, 1, fptr);
+                int bitPosition = 7 - (frame - byteToChange*3);
+                byte[0] = byte[0] & (~(0x01 << bitPosition));
+                fwrite(byte, 1, 1, fptr);
+            }
+            if (freeLast)
+            {
+                int frame = fileFrames[fileCounter - 1];
+                int byteToChange = frame / 8;
+                fseek(fptr, 4096 + byteToChange, SEEK_SET);
+                unsigned char byte[1];
+                fread(byte, 1, 1, fptr);
+                int bitPosition = 7 - (frame - byteToChange*3);
+                byte[0] = byte[0] & (~(0x01 << bitPosition));
+                fwrite(byte, 1, 1, fptr);
+            }
+        }
+        else if (fileCounter == 2) 
+        {
+            int freeFirst = 1;
+            int freeLast = 1;
+            for (int i = 0; i < otherFileCounter; i++)
+            {
+                if (fileFrames[0] == otherFileFrames[i])
+                {
+                    freeFirst = 0;
+                }
+                if (fileFrames[1] == otherFileFrames[i])
+                {
+                    freeLast = 0;
+                }
+                if (!freeFirst && !freeLast) break;
+            }
+
+            if (freeFirst) {
+                int frame = fileFrames[0];
+                int byteToChange = frame / 8;
+                fseek(fptr, 4096 + byteToChange, SEEK_SET);
+                unsigned char byte[1];
+                fread(byte, 1, 1, fptr);
+                int bitPosition = 7 - (frame - byteToChange*3);
+                byte[0] = byte[0] & (~(0x01 << bitPosition));
+                fwrite(byte, 1, 1, fptr);
+            }
+            if (freeLast)
+            {
+                int frame = fileFrames[fileCounter - 1];
+                int byteToChange = frame / 8;
+                fseek(fptr, 4096 + byteToChange, SEEK_SET);
+                unsigned char byte[1];
+                fread(byte, 1, 1, fptr);
+                int bitPosition = 7 - (frame - byteToChange*3);
+                byte[0] = byte[0] & (~(0x01 << bitPosition));
+                fwrite(byte, 1, 1, fptr);
+            }
+        } else if (fileCounter == 1)
+        {
+            int freeFirst = 1;
+            for (int i = 0; i < otherFileCounter; i++)
+            {
+                if (fileFrames[0] == otherFileFrames[i])
+                {
+                    freeFirst = 0;
+                    break;
+                }
+            }
+            if (freeFirst) {
+                int frame = fileFrames[0];
+                int byteToChange = frame / 8;
+                fseek(fptr, 4096 + byteToChange, SEEK_SET);
+                unsigned char byte[1];
+                fread(byte, 1, 1, fptr);
+                int bitPosition = 7 - (frame - byteToChange*3);
+                byte[0] = byte[0] & (~(0x01 << bitPosition));
+                fwrite(byte, 1, 1, fptr);
+            }
+        }
+    }
 }
+
 
 int cr_read(CrmsFile* file_desc, void* buffer, int n_bytes)
 {
@@ -396,9 +587,9 @@ int cr_read(CrmsFile* file_desc, void* buffer, int n_bytes)
     }
     if (file_desc->lastReadSize == file_desc->fileSize)
     {
-        crmsFile->lastReadOffset = crmsFile->offSet;
-        crmsFile->lastReadSize = 0;
-        crmsFile->completedPages = 0;
+        file_desc->lastReadOffset = file_desc->offSet;
+        file_desc->lastReadSize = 0;
+        file_desc->completedPages = 0;
     }
     memcpy(buffer, content, read);
     return read;
