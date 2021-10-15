@@ -2,6 +2,7 @@
 #include <stdio.h>  // FILE, fopen, fclose, etc.
 #include <stdlib.h>
 #include <string.h> // strtok, strcpy, etc.
+#include <byteswap.h>
 
 extern FILE *fptr;
 
@@ -14,20 +15,22 @@ PCBSubEntry* PCBSubEntryInit(unsigned char discPCBTable[], int i, int j) {
 
     for (int k = 0; k < 12; k++)
     {
-        pcbSubEntry->fileName[k] = discPCBTable[(256 * i + 21 * j + 14) + k + 1];
+        pcbSubEntry->fileName[k] = discPCBTable[(256 * i + 21 * j + 14 + 1) + k];
     }
     
-    unsigned char fileSize[4];
-    for (int k = 0; k < 4; k++)
-    {
-        fileSize[k] = discPCBTable[(256 * i + 21 * j + 14) + k + 12] << (3 - k)*8;
-    }
-    
-    unsigned int resultUnitedBytes  = fileSize[11] | fileSize[10] | fileSize[9]
-                            | fileSize[8] | fileSize[7] | fileSize[6]
-                            | fileSize[5] | fileSize[4] | fileSize[3]
-                            | fileSize[2] | fileSize[1] | fileSize[0];
-    pcbSubEntry->fileSize = resultUnitedBytes;
+    unsigned int fileSize;
+    // for (int k = 0; k < 4; k++)
+    // {
+    //     fileSize[k] = discPCBTable[(256 * i + 21 * j + 14 + 13) + k] << ((3 - k)*8);
+    //     printf("FileSize: %i\n", fileSize[k]);
+    // }
+    fseek(fptr, 256 * i + 21 * j + 14 + 13, SEEK_SET);
+    fread(&fileSize, 4, 1, fptr);
+    fileSize = bswap_32(fileSize);
+    pcbSubEntry->fileSize = fileSize;
+    // unsigned int resultUnitedBytes  = fileSize[3] | fileSize[2] | fileSize[1]| fileSize[0]; 
+   
+    // pcbSubEntry->fileSize = resultUnitedBytes;
 
     unsigned char eighteenByte = discPCBTable[(256 * i + 21 * j + 14 + 17)];
     unsigned char nineteenByte = discPCBTable[(256 * i + 21 * j + 14 + 17 + 1)];
@@ -36,8 +39,11 @@ PCBSubEntry* PCBSubEntryInit(unsigned char discPCBTable[], int i, int j) {
 
 
     unsigned int VPN = (eighteenByte << 1) | (nineteenByte >> 7);
-    unsigned int offSet = ((nineteenByte && 127) << 16) | (twentyByte << 8) | (twentyOneByte);
-
+    unsigned int offSet = ((nineteenByte & 0b01111111) << 16) | (twentyByte << 8) | (twentyOneByte);
+    // printf("%s\n", pcbSubEntry->fileName);
+    // printf("SIZE: %u\n", fileSize);
+    // printf("VPN: %i\n", VPN);
+    // printf("Offeset: %i\n", offSet);
     pcbSubEntry->VPN = VPN;
     pcbSubEntry->offSet = offSet;
 
@@ -64,10 +70,11 @@ PCBEntry* PCBEntryInit(unsigned char discPCBTable[], int i) {
         pcbEntryInit->subEntriesArray[j] = PCBSubEntryInit(discPCBTable, i, j);
         
     }
+    
+    
 
     PageTable* pageTable = PageTableInit(discPCBTable, i);
     pcbEntryInit->pageTable = pageTable;
-    
     
     return pcbEntryInit;
 }
@@ -96,6 +103,8 @@ PageTableEntry* PageTableEntryInit(unsigned char discPCBTable[], int i, int j) {
 
     unsigned int valid = (firstByte & (1 << 7)) >> 7 ;
     unsigned int PFN = (firstByte & 127);
+
+    // printf("PFN: %i\n", PFN);
 
     pageTableEntry->valid = valid;
     pageTableEntry->PFN = PFN;

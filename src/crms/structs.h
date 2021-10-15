@@ -63,7 +63,7 @@ typedef enum errorcode
     //Write all the errors below
     INVALID_MEM_PATH,
     INVALID_MODE,
-    PROCCESS_NOT_FOUND_STARTING,
+    PCB_FULL,
     INVALID_PROCESS_OPENING_FILE,
     INVALID_FILE_OPENING_FILE,
     INVALID_FINISH_PROCESS,

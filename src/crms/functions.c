@@ -94,19 +94,32 @@ void cr_start_process(int process_id, char* process_name)
     int found = 0;
     for (int i = 0; i < 16; i++)
     {
-        if (!strcmp((const char *)PCB_TABLE->entriesArray[i]->processName, "") && !PCB_TABLE->entriesArray[i]->processId)
+        if (!PCB_TABLE->entriesArray[i]->state)
         {
             found ++;
             memcpy(PCB_TABLE->entriesArray[i]->processName, process_name, 12);
             PCB_TABLE->entriesArray[i]->processId = process_id;
             PCB_TABLE->entriesArray[i]->state = 1;
+
+            unsigned char byteState = (unsigned char)1;
+
+            fseek(fptr, 256 * i, SEEK_SET);
+            fwrite(&byteState, 1, 1, fptr);
+
+            unsigned char byteId = (unsigned char)process_id;
+            fseek(fptr, 256 * i + 1, SEEK_SET);
+            fwrite(&byteId, 1, 1, fptr);
+
+            // unsigned char byteProcessName[12] = (unsigned char)process_name;
+            fseek(fptr, 256 * i + 2, SEEK_SET);
+            fwrite(process_name, 1, 12, fptr);
             break;
         }
         
     }
     if (!found)
     {
-        CR_ERROR = PROCCESS_NOT_FOUND_STARTING;
+        CR_ERROR = PCB_FULL;
     }
     
     
@@ -125,10 +138,25 @@ void cr_finish_process(int process_id)
             for (int j = 0; j < 10; j++)
             {
                 PCB_TABLE->entriesArray[i]->subEntriesArray[j]->valid = 0;
+
+                unsigned char byteValid = (unsigned char)0;
+
+                fseek(fptr, 256 * i + 21 * j + 14, SEEK_SET);
+                fwrite(&byteValid, 1, 1, fptr);
             }
             
             PCB_TABLE->entriesArray[i]->state = 0;
             PCB_TABLE->entriesArray[i]->processId = 0;
+            
+            unsigned char byteState = (unsigned char)0;
+
+            fseek(fptr, 256 * i, SEEK_SET);
+            fwrite(&byteState, 1, 1, fptr);
+
+            unsigned char byteId = (unsigned char)0;
+            fseek(fptr, 256 * i + 1, SEEK_SET);
+            fwrite(&byteId, 1, 1, fptr);
+
             foundProcess ++;
             break;
         }
@@ -155,6 +183,8 @@ CrmsFile* cr_open(int process_id, char* file_name, char mode)
             {
                 for (int j = 0; j < 10; j++)
                 {
+                    // printf("VPN: %i\n", PCB_TABLE->entriesArray[i]->subEntriesArray[j]->VPN);
+                    // printf("Offset: %i\n", PCB_TABLE->entriesArray[i]->subEntriesArray[j]->offSet);
                     if (!strcmp((const char *)PCB_TABLE->entriesArray[i]->subEntriesArray[j]->fileName, file_name))
                     {
                         foundFile ++;
@@ -166,6 +196,8 @@ CrmsFile* cr_open(int process_id, char* file_name, char mode)
                         crmsFile->lastReadOffset = crmsFile->offSet;
                         crmsFile->lastReadSize = 0;
                         crmsFile->completedPages = 0;
+                        // printf("VPN: %i\n", PCB_TABLE->entriesArray[i]->subEntriesArray[j]->VPN);
+                        // printf("Offset: %i\n", PCB_TABLE->entriesArray[i]->subEntriesArray[j]->offSet);
                         return crmsFile;
                     }
                     
@@ -324,17 +356,17 @@ int cr_read(CrmsFile* file_desc, void* buffer, int n_bytes)
 
     for (int i = 0; i < 16; i++)
     {
-        if (file_desc->proccessId == PCB_TABLE->entriesArray[i]->processId)
+        if (file_desc->proccessId == PCB_TABLE->entriesArray[i]->processId && PCB_TABLE->entriesArray[i]->state == 1)
         {
             pageTable = PCB_TABLE->entriesArray[i]->pageTable;
             break;
         }
         
     }
-
     PFN = pageTable->entriesArray[file_desc->VPN + file_desc->completedPages]->PFN;
-
-    printf("VPN: %i", file_desc->VPN);
+    // printf("PFN INICIAL: %i", PFN);
+    // printf("PFN: %i\n", PFN);
+    // printf("Valid: %i\n", pageTable->entriesArray[file_desc->VPN + file_desc->completedPages]->valid);
 
     while (file_desc->lastReadSize < file_desc->fileSize)
     {
@@ -343,6 +375,7 @@ int cr_read(CrmsFile* file_desc, void* buffer, int n_bytes)
             file_desc->completedPages ++;
             file_desc->lastReadOffset = 0;
             PFN = pageTable->entriesArray[file_desc->VPN + file_desc->completedPages]->PFN;
+            // printf("PFN CAMBIO: %i", PFN);
 
         }
 
@@ -361,10 +394,41 @@ int cr_read(CrmsFile* file_desc, void* buffer, int n_bytes)
         }
                 
     }
-    
+    if (file_desc->lastReadSize == file_desc->fileSize)
+    {
+        crmsFile->lastReadOffset = crmsFile->offSet;
+        crmsFile->lastReadSize = 0;
+        crmsFile->completedPages = 0;
+    }
     memcpy(buffer, content, read);
     return read;
 }
+
+
+int cr_write_file(CrmsFile* file_desc, void* buffer, int n_bytes)
+{
+    PageTable* pageTable;
+    for (int i = 0; i < 16; i++)
+    {
+        if (file_desc->proccessId == PCB_TABLE->entriesArray[i]->processId && PCB_TABLE->entriesArray[i]->state == 1)
+        {
+            pageTable = PCB_TABLE->entriesArray[i]->pageTable;
+            break;
+        }
+        
+    }
+
+    for (int i = 0; i < 32; i++)
+    {
+        if (!pageTable->entriesArray[i]->valid)
+        {
+            /* code */
+        }
+        
+    }
+    
+}
+
 
 
 
@@ -376,7 +440,7 @@ void cr_strerror(int code)
             printf("ERROR: The path of the virtual memory is invalid.\n");
         case INVALID_MODE:
             printf("EEROR: The mode selected for opening the file is invalid.\n");
-        case PROCCESS_NOT_FOUND_STARTING:
+        case PCB_FULL:
             printf("ERROR: The procces selected to start was not found.\n");
         case INVALID_PROCESS_OPENING_FILE:
             printf("ERROR: The process selected to open the file was not found.\n");
