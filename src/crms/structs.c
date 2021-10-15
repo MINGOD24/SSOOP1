@@ -132,3 +132,23 @@ CrmsFile* CrmsFileInit(unsigned int proccessId, unsigned char fileName[], unsign
 
     return crmsFile;
 }
+
+void destroy_all(PCBTable* pcbTable)
+{
+    for (int i = 0; i < 16; i++)
+    {
+        for (int j = 0; j < 10; j++)
+        {
+            free(pcbTable->entriesArray[i]->subEntriesArray[j]);
+        }
+        for (int k = 0; k < 32; k++)
+        {
+            free(pcbTable->entriesArray[i]->pageTable->entriesArray[k]);
+        }
+        
+        free(pcbTable->entriesArray[i]->pageTable);
+        free(pcbTable->entriesArray[i]);
+    }
+    free(pcbTable);
+    fclose(fptr);
+}

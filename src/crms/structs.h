@@ -79,5 +79,6 @@ PCBTable* PCBTableInit();
 PageTableEntry* PageTableEntryInit(unsigned char discPCBTable[], int i, int j);
 PageTable* PageTableInit(unsigned char discPCBTable[], int i);
 CrmsFile* CrmsFileInit(unsigned int proccessId, unsigned char fileName[], unsigned int fileSize);
+void destroy_all();
 
 ErrorCode CR_ERROR;

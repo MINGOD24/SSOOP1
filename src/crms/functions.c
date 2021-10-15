@@ -6,7 +6,6 @@
 #include<string.h>  
 #include <math.h>
 
-
 char* VIRTUAL_MEMORY_PATH;
 FILE *fptr;
 PCBTable* PCB_TABLE;
@@ -224,7 +223,7 @@ CrmsFile* cr_open(int process_id, char* file_name, char mode)
                 }
                 for (int j = 0; j < 10; j++)
                 {
-                    if (PCB_TABLE->entriesArray[i]->subEntriesArray[j]->valid == 0)
+                    if (!PCB_TABLE->entriesArray[i]->subEntriesArray[j]->valid)
                     {
                         foundFile ++;
                         PCB_TABLE->entriesArray[i]->subEntriesArray[j]->fileSize = 0;
@@ -238,6 +237,24 @@ CrmsFile* cr_open(int process_id, char* file_name, char mode)
                         crmsFile->lastReadOffset = crmsFile->offSet;
                         crmsFile->lastReadSize = 0;
                         crmsFile->completedPages = 0;
+
+                        // write in memory
+                        unsigned char byteValid = (unsigned char)0;
+                        fseek(fptr, 256 * i + 21 * j + 14, SEEK_SET);
+                        fwrite(&byteValid, 1, 1, fptr);
+
+                        fseek(fptr, 256 * i + 21 * j + 14 + 1, SEEK_SET);
+                        fwrite(file_name, 1, 12, fptr);
+
+                        unsigned char fileSize[4] = {0,0,0,0};
+                        for (int k = 0; k < 4; k++)
+                        {
+                            fseek(fptr, 256 * i + 21 * j + 14 + 13 + k, SEEK_SET);
+                            fwrite(&fileSize, 1, 4, fptr);
+                        }
+                        
+         
+
                         return crmsFile;
                     }
                     
@@ -268,79 +285,6 @@ void cr_close(CrmsFile* file_desc)
 {
     free(file_desc);
 }
-
-// void cr_delete_file(CrmsFile* file_desc)
-// {
-//     int* fileFrames[16];
-//     int filesCounter = 0;
-//     int** otherFilesFrames[144];
-//     int otherFilesCounter = 0;
-//     PageTable* pageTable;
-
-//     for (int i = 0; i < 16; i++)
-//     {
-//         if (file_desc->proccessId == PCB_TABLE->entriesArray[i]->processId)
-//         {
-//             pageTable = PCB_TABLE->entriesArray[i]->pageTable;
-
-//             for (int j = 0; j < 10; j++)
-//             {   
-//                 PCBSubEntry* subEntry = PCB_TABLE->entriesArray[i]->subEntriesArray[j];
-//                 unsigned int VFN = pageTable->entriesArray[subEntry->VPN];
-
-//                 if (file_desc->fileName == PCB_TABLE->entriesArray[i]->subEntriesArray[j]->fileName)
-//                 {
-//                     PCB_TABLE->entriesArray[i]->subEntriesArray[j]->valid = 0;
-
-//                     int currentOffset = subEntry->offSet;
-//                     int frameFreeSpace = 8388608 - currentOffset;
-//                     int currentSize = subEntry->fileSize;
-
-//                     while (currentSize)
-//                     {
-//                         if (currentSize <= frameFreeSpace) {
-//                             fileFrames[filesCounter] = VFN;  
-//                             currentSize = 0;  
-//                         } else {
-//                             currentSize = currentSize - frameFreeSpace;
-//                             frameFreeSpace = 8388608;
-//                             fileFrames[filesCounter] = VFN;  
-//                         }
-//                         filesCounter++;
-//                     }
-
-//                 } else {
-
-//                     int currentOffset = subEntry->offSet;
-//                     int frameFreeSpace = 8388608 - currentOffset;
-//                     int currentSize = subEntry->fileSize;
-
-//                     while (currentSize)
-//                     {
-//                         if (currentSize <= frameFreeSpace) {
-//                             otherFilesFrames[otherFilesCounter] = VFN;  
-//                             currentSize = 0;  
-//                         } else {
-//                             currentSize = currentSize - frameFreeSpace;
-//                             frameFreeSpace = 8388608;
-//                             otherFilesFrames[otherFilesCounter] = VFN;  
-//                         }
-//                         otherFilesCounter++;
-//                     }
-//                 }
-//             }
-//             if (filesCounter < 16) {
-//                 fileFrames[filesCounter + 1] = NULL;
-//             }
-//             if (otherFilesCounter < 144) {
-//                 otherFilesFrames[otherFilesCounter + 1] = NULL;
-//             }
-//             break;
-//         }
-        
-//     }
-//     // HACER COMPARACION 
-// }
 
 void cr_delete_file(CrmsFile* file_desc)
 {
@@ -389,10 +333,12 @@ void cr_delete_file(CrmsFile* file_desc)
                 if (currentSize <= currentFreeSpace) 
                 {
                     fileFrames[fileCounter] = pageTable->entriesArray[VPN]->PFN;
+                    printf("Ultimo PFN tocado: %i\n", pageTable->entriesArray[VPN]->PFN);
                     currentSize = 0;
                 } else 
                 {
                     fileFrames[fileCounter] = pageTable->entriesArray[VPN]->PFN;
+                    printf("PFN tocado: %i\n", pageTable->entriesArray[VPN]->PFN);
                     VPN++;
                     currentSize = currentSize - currentFreeSpace;
                     currentFreeSpace = 8388608;
@@ -420,118 +366,121 @@ void cr_delete_file(CrmsFile* file_desc)
                 otherFileCounter++;
             }
         }
+    }
+    if (fileCounter > 2)
+    {
+        // free all middle frames
+        for (int i = 1; i < fileCounter - 1; i++)
+        {   
+            int frame = fileFrames[i];
+            int byteToChange = (int)(frame / 8);
+            fseek(fptr, 4096 + byteToChange, SEEK_SET);
+            unsigned char byte[1];
+            fread(byte, 1, 1, fptr);
+            int bitPosition = 7 - (frame - byteToChange*8);
+            byte[0] = byte[0] & (~(0x01 << bitPosition));
+            fseek(fptr, 4096 + byteToChange, SEEK_SET);
+            fwrite(byte, 1, 1, fptr);
+            printf("byte: %i, bitPos: %i\n", byteToChange, bitPosition);
+            printf("frame liberado: %i\n", frame);
+        }
 
-        if (fileCounter > 2)
+        int freeFirst = 1;
+        int freeLast = 1;
+        for (int i = 0; i < otherFileCounter; i++)
         {
-            // free all middle frames
-            for (int i = 1; i < fileCounter - 1; i++)
-            {   
-                int frame = fileFrames[i];
-                int byteToChange = frame / 8;
-                fseek(fptr, 4096 + byteToChange, SEEK_SET);
-                unsigned char byte[1];
-                fread(byte, 1, 1, fptr);
-                int bitPosition = 7 - (frame - byteToChange*3);
-                byte[0] = byte[0] & (~(0x01 << bitPosition));
-                fwrite(byte, 1, 1, fptr);
-            }
-
-            int freeFirst = 1;
-            int freeLast = 1;
-            for (int i = 0; i < otherFileCounter; i++)
+            if (fileFrames[0] == otherFileFrames[i])
             {
-                if (fileFrames[0] == otherFileFrames[i])
-                {
-                    freeFirst = 0;
-                }
-                if (fileFrames[fileCounter - 1] == otherFileFrames[i])
-                {
-                    freeLast = 0;
-                }
-                if (!freeFirst && !freeLast) break;
+                freeFirst = 0;
             }
-
-            if (freeFirst) {
-                int frame = fileFrames[0];
-                int byteToChange = frame / 8;
-                fseek(fptr, 4096 + byteToChange, SEEK_SET);
-                unsigned char byte[1];
-                fread(byte, 1, 1, fptr);
-                int bitPosition = 7 - (frame - byteToChange*3);
-                byte[0] = byte[0] & (~(0x01 << bitPosition));
-                fwrite(byte, 1, 1, fptr);
-            }
-            if (freeLast)
+            if (fileFrames[fileCounter - 1] == otherFileFrames[i])
             {
-                int frame = fileFrames[fileCounter - 1];
-                int byteToChange = frame / 8;
-                fseek(fptr, 4096 + byteToChange, SEEK_SET);
-                unsigned char byte[1];
-                fread(byte, 1, 1, fptr);
-                int bitPosition = 7 - (frame - byteToChange*3);
-                byte[0] = byte[0] & (~(0x01 << bitPosition));
-                fwrite(byte, 1, 1, fptr);
+                freeLast = 0;
+            }
+            if (!freeFirst && !freeLast) break;
+        }
+
+        if (freeFirst) {
+            int frame = fileFrames[0];
+            int byteToChange = frame / 8;
+            fseek(fptr, 4096 + byteToChange, SEEK_SET);
+            unsigned char byte[1];
+            fread(byte, 1, 1, fptr);
+            int bitPosition = 7 - (frame - byteToChange*3);
+            byte[0] = byte[0] & (~(0x01 << bitPosition));
+            fwrite(byte, 1, 1, fptr);
+        }
+        if (freeLast)
+        {
+            int frame = fileFrames[fileCounter - 1];
+            int byteToChange = frame / 8;
+            fseek(fptr, 4096 + byteToChange, SEEK_SET);
+            unsigned char byte[1];
+            fread(byte, 1, 1, fptr);
+            int bitPosition = 7 - (frame - byteToChange*3);
+            byte[0] = byte[0] & (~(0x01 << bitPosition));
+            fwrite(byte, 1, 1, fptr);
+        }
+    }
+    else if (fileCounter == 2) 
+    {
+        int freeFirst = 1;
+        int freeLast = 1;
+        for (int i = 0; i < otherFileCounter; i++)
+        {
+            if (fileFrames[0] == otherFileFrames[i])
+            {
+                freeFirst = 0;
+            }
+            if (fileFrames[1] == otherFileFrames[i])
+            {
+                freeLast = 0;
+            }
+            if (!freeFirst && !freeLast) break;
+        }
+
+        if (freeFirst) {
+            int frame = fileFrames[0];
+            int byteToChange = frame / 8;
+            fseek(fptr, 4096 + byteToChange, SEEK_SET);
+            unsigned char byte[1];
+            fread(byte, 1, 1, fptr);
+            int bitPosition = 7 - (frame - byteToChange*3);
+            byte[0] = byte[0] & (~(0x01 << bitPosition));
+            fwrite(byte, 1, 1, fptr);
+        }
+        if (freeLast)
+        {
+            int frame = fileFrames[fileCounter - 1];
+            int byteToChange = frame / 8;
+            fseek(fptr, 4096 + byteToChange, SEEK_SET);
+            unsigned char byte[1];
+            fread(byte, 1, 1, fptr);
+            int bitPosition = 7 - (frame - byteToChange*3);
+            byte[0] = byte[0] & (~(0x01 << bitPosition));
+            fwrite(byte, 1, 1, fptr);
+        }
+    } else if (fileCounter == 1)
+    {
+        int freeFirst = 1;
+        for (int i = 0; i < otherFileCounter; i++)
+        {
+            if (fileFrames[0] == otherFileFrames[i])
+            {
+                freeFirst = 0;
+                printf("frame no vacio\n");
+                break;
             }
         }
-        else if (fileCounter == 2) 
-        {
-            int freeFirst = 1;
-            int freeLast = 1;
-            for (int i = 0; i < otherFileCounter; i++)
-            {
-                if (fileFrames[0] == otherFileFrames[i])
-                {
-                    freeFirst = 0;
-                }
-                if (fileFrames[1] == otherFileFrames[i])
-                {
-                    freeLast = 0;
-                }
-                if (!freeFirst && !freeLast) break;
-            }
-
-            if (freeFirst) {
-                int frame = fileFrames[0];
-                int byteToChange = frame / 8;
-                fseek(fptr, 4096 + byteToChange, SEEK_SET);
-                unsigned char byte[1];
-                fread(byte, 1, 1, fptr);
-                int bitPosition = 7 - (frame - byteToChange*3);
-                byte[0] = byte[0] & (~(0x01 << bitPosition));
-                fwrite(byte, 1, 1, fptr);
-            }
-            if (freeLast)
-            {
-                int frame = fileFrames[fileCounter - 1];
-                int byteToChange = frame / 8;
-                fseek(fptr, 4096 + byteToChange, SEEK_SET);
-                unsigned char byte[1];
-                fread(byte, 1, 1, fptr);
-                int bitPosition = 7 - (frame - byteToChange*3);
-                byte[0] = byte[0] & (~(0x01 << bitPosition));
-                fwrite(byte, 1, 1, fptr);
-            }
-        } else if (fileCounter == 1)
-        {
-            int freeFirst = 1;
-            for (int i = 0; i < otherFileCounter; i++)
-            {
-                if (fileFrames[0] == otherFileFrames[i])
-                {
-                    freeFirst = 0;
-                    break;
-                }
-            }
-            if (freeFirst) {
-                int frame = fileFrames[0];
-                int byteToChange = frame / 8;
-                fseek(fptr, 4096 + byteToChange, SEEK_SET);
-                unsigned char byte[1];
-                fread(byte, 1, 1, fptr);
-                int bitPosition = 7 - (frame - byteToChange*3);
-                byte[0] = byte[0] & (~(0x01 << bitPosition));
-                fwrite(byte, 1, 1, fptr);
-            }
+        if (freeFirst) {
+            int frame = fileFrames[0];
+            int byteToChange = frame / 8;
+            fseek(fptr, 4096 + byteToChange, SEEK_SET);
+            unsigned char byte[1];
+            fread(byte, 1, 1, fptr);
+            int bitPosition = 7 - (frame - byteToChange*3);
+            byte[0] = byte[0] & (~(0x01 << bitPosition));
+            fwrite(byte, 1, 1, fptr);
         }
     }
 }
