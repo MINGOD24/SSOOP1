@@ -10,7 +10,7 @@ char* VIRTUAL_MEMORY_PATH;
 FILE *fptr;
 PCBTable* PCB_TABLE;
 
-extern ErrorCode CR_ERROR;
+ErrorCode CR_ERROR;
 
 // general functions
 void cr_mount(char* memory_path)
@@ -573,11 +573,11 @@ void cr_strerror(int code)
     switch (code) {
 
         case INVALID_MEM_PATH:
-            printf("ERROR: The path of the virtual memory is invalid.\n");
+            printf("ERROR: The path of the memory is invalid.\n");
         case INVALID_PROCESSID_EXIST:
             printf("ERROR: The provided process id to search the file doesnt exist.\n");
         case INVALID_PROCESSID_LS:
-            printf("ERROR: The provided process id to show his files doesnt exist.\n");
+            printf("ERROR: The provided process id to show its files doesnt exist.\n");
         case PROCESSID_ALREADY_EXIST:
             printf("ERROR: There is already a process with the provided process id in execution.\n");
         case PCB_FULL_START:
@@ -587,11 +587,11 @@ void cr_strerror(int code)
         case INVALID_PROCESSID_OPEN:
             printf("ERROR: The process selected to open the file was not found.\n");
         case INVALID_MODE:
-            printf("EEROR: The mode selected for opening the file is invalid.\n");
+            printf("ERROR: The mode selected for opening the file is invalid.\n");
         case INVALID_FILE_OPEN:
             printf("ERROR: The file selected to open was not found.\n");
         case PCB_FULLW_OPEN:
-            printf("ERROR: There is no space available in the PCB to open your process.\n");
+            printf("ERROR: There is no space available in the PCB to create a new file.\n");
         case INVALID_READ:
             printf("ERROR: The file you are trying to read is smaller than your buffer.\n");
 

@@ -61,6 +61,7 @@ typedef struct crmsfile
 typedef enum errorcode
 {
     //Write all the errors below
+    NO_ERROR,
     INVALID_MEM_PATH,
     INVALID_PROCESSID_EXIST,
     INVALID_PROCESSID_LS,
