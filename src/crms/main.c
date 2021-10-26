@@ -101,7 +101,7 @@ int main(int argc, char **argv)
     // -------------------------------- CR_EXISTS - INVALID ID ERROR ---------------------------
 
     // cr_mount(argv[1]);
-    // cr_exists(44, "TEST.png");
+    // cr_exists(44, "TEST.txt");
     // if (CR_ERROR) {
     //     cr_strerror(CR_ERROR);
     //     exit(1);    
@@ -185,83 +185,53 @@ int main(int argc, char **argv)
     //     printf("Byte: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(byte[0]));
     // }
 
+
+
+
+    // -------------------------------- CR_READ FULL  ---------------------------
+
+    // cr_mount(argv[1]);
+    // CrmsFile* crmsFile = cr_open(27, "amogus.mp4", 'r');
+    // FILE *fp = fopen("amogus.mp4", "wb");
+    // printf("SIZE: %i\n", crmsFile->fileSize);
+    // unsigned char buffer[10000];
+    // int byteLeidosTotales = 0;
+    // int byteLeidos = cr_read(crmsFile, buffer, 10000);
+    // byteLeidosTotales += byteLeidos;
+    // printf("\nBytes Leidos: %i\n", byteLeidos);
+    // while (byteLeidos != 0)
+    // {
+    //     if (byteLeidosTotales == crmsFile->fileSize)
+    //     {
+    //         break;
+    //     }
+        
+    //     fwrite(buffer, byteLeidos, 1, fp);
+    //     byteLeidos = cr_read(crmsFile, buffer, 10000);
+    //     byteLeidosTotales += byteLeidos;
+    // }
+    // fclose(fp);
+
+
+
+    // -------------------------------- CR_CLOSE WITHOUT CLOSING FILE VALGRIND ---------------------------
+
+    // cr_mount(argv[1]);
+    // CrmsFile* crmsFile = cr_open(0, "secret.txt", 'r');
+    // printf("File Name: %s", crmsFile->fileName);
+
+
+   // -------------------------------- CR_CLOSE CLOSING FILE VALGRIND ---------------------------
+
+    // cr_mount(argv[1]);
+    // CrmsFile* crmsFile = cr_open(0, "secret.txt", 'r');
+    // printf("File Name: %s", crmsFile->fileName);
+    // cr_close(crmsFile);
     
 
 
 
 
-
-
-
-    // 
-    // // printf("\n---------\n");
-    // cr_ls_files(27);
-    // for (int i = 0; i < 16; i++)
-    // {
-    //     fseek(fptr, 4096 + i, SEEK_SET);
-    //     unsigned char byte[1];
-    //     fread(byte, 1, 1, fptr);
-    //     printf("Byte: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(byte[0]));
-    // }
-
-
-
-
-
-
-    // cr_ls_files(9);
-    // cr_ls_processes();
-    // int name = cr_exists(27, "grub.mp4");
-    // printf("RETORNO: %i\n", name);
-    // cr_ls_files(27);
-    // cr_start_process(34, "vicho pizarro");
-    // cr_ls_processes();
-    // cr_finish_process(34);
-    // cr_ls_processes();
-    // CrmsFile* crmsFile = cr_open(27, "juanito.mp3", 'w');
-    // printf("File Name: %s\n", crmsFile->fileName);
-    // int name = cr_exists(27, "juanito.mp3");
-    // printf("RETORNO: %i\n", name);
-    // CrmsFile* crmsFile = cr_open(27, "caramel.wav", 'r');
-    // printf("OFFSET: %i", crmsFile->offSet);
-    // FILE *fp = fopen("caramel.wav", "wb");
-    // printf("SIZE: %i\n", crmsFile->fileSize);
-    // unsigned char buffer[10000];
-    // int byteLeidos = cr_read(crmsFile, buffer, 10000);
-    // printf("\nBytes Leidos: %i\n", byteLeidos);
-    // while (byteLeidos != 0)
-    // {
-    //     fwrite(buffer, byteLeidos, 1, fp);
-    //     byteLeidos = cr_read(crmsFile, buffer, 10000);
-    // }
-    // fclose(fp);
-
-    // CrmsFile* crmsFile = cr_open(0, "sapete.mp3", 'w');
-    // int name = cr_exists(0, "sapete.mp3");
-    // printf("RETORNO: %i\n", name);
-    // CrmsFile* crmsFile = cr_open(0, "sapete.mp3", 'r');
-    // printf("%s, %i\n", crmsFile->fileName, crmsFile->fileSize);
-
-
-    // for (int i = 0; i < 16; i++)
-    // {
-    //     fseek(fptr, 4096 + i, SEEK_SET);
-    //     unsigned char byte[1];
-    //     fread(byte, 1, 1, fptr);
-    //     printf("Byte: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(byte[0]));
-    // }
-
-    // CrmsFile* crmsFile = cr_open(27, "caramel.wav", 'r');
-    // cr_delete_file(crmsFile);
-
-    //     for (int i = 0; i < 16; i++)
-    // {
-    //     fseek(fptr, 4096 + i, SEEK_SET);
-    //     unsigned char byte[1];
-    //     fread(byte, 1, 1, fptr);
-    //     printf("Byte: " BYTE_TO_BINARY_PATTERN "\n", BYTE_TO_BINARY(byte[0]));
-    // }
-
-    // destroy_all(PCB_TABLE);
+    destroy_all(PCB_TABLE);
 }
 
